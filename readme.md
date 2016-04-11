@@ -46,6 +46,7 @@ Android Studio project
 ----------------------
 
 How to install this project Android Studio
+
 1. Open Android Studio and select Import Project
 2. select the folder "Android Studio project"
 3. Build app and run
