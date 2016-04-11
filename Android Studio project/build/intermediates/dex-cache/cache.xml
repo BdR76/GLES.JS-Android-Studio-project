@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        jar="C:\programming\android\GLESjs_project\Android Studio project\app\libs\ouya-sdk.jar"
+        jumboMode="true"
+        revision="21.1.2"
+        sha1="54d26a0f5fc13db308cdce17f8a393e4ac64f270">
+        <dex dex="C:\programming\android\GLESjs_project\Android Studio project\app\build\intermediates\pre-dexed\debug\ouya-sdk_bafeab449d37060936e07ba96a60cba641e747ad.jar" />
+    </item>
+    <item
+        jar="C:\programming\android\GLESjs_project\Android Studio project\app\build\intermediates\incremental-runtime-classes\debug\instant-run.jar"
+        jumboMode="true"
+        revision="21.1.2"
+        sha1="357f6a92605a8e6d3366bed597a6d7150d81e7ad">
+        <dex dex="C:\programming\android\GLESjs_project\Android Studio project\app\build\intermediates\pre-dexed\debug\instant-run_54a46bca355077fe030e8b0ef005c0fd528e3f42.jar" />
+    </item>
+    <item
+        jar="C:\programming\android\GLESjs_project\Android Studio project\app\build\intermediates\incremental-classes\debug\instant-run-bootstrap.jar"
+        jumboMode="true"
+        revision="21.1.2"
+        sha1="926e1f8710bb09008bf316547e59428805cc6333">
+        <dex dex="C:\programming\android\GLESjs_project\Android Studio project\app\build\intermediates\pre-dexed\debug\instant-run-bootstrap_9b06408b661cc4dbe27be0ce89e1695f49a616f4.jar" />
+    </item>
+
+</items>
