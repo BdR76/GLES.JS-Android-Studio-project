@@ -12,6 +12,8 @@ I've set up the project file through trial and error so if you have any
 it works, but it might contain incorrect settings or redundant files.
 Any suggestions or improvements, please let me know (see end of file).
 
+![preview screenshot](https://raw.githubusercontent.com/BdR76/GLES.JS-Android-Studio-project/master/screenshot/gles_test1.png)
+
 GLESjs
 ------
 [GLES.JS on github](https://github.com/borisvanschooten/glesjs)
