@@ -1,4 +1,6 @@
-// gles.js (c) by Boris van Schooten boris@13thmonkey.org
+// Copyright (c) by Boris van Schooten boris@13thmonkey.org
+// Released under BSD license. See LICENSE for details.
+// This file is part of gles.js - a lightweight WebGL renderer for Android
 // HTML5 function and object emulation
 
 // Image
@@ -24,7 +26,12 @@ _gl.texImage2D = function(target,level,p3,p4,p5,p6,p7,p8,p9) {
 		// long version
 		this._texImage2D(target,level,p3,p4,p5,p6,p7,p8,p9);
 	} else {
-		if (!p6.src) throw "Image.src not defined or not an Image";
+		if (!p6.src) {
+			// currently not fatal so C2 can continue
+			//throw "Image.src not defined or not an Image";
+			console.log("Image.src not defined or not an Image");
+			return;
+		}
 		// short version:
 		//_gl.texImage2D = function(target,level,format,internalformat,type, image);
 		this._texImage2D(target,level,p3,p4,p5,p6.src);
@@ -66,6 +73,11 @@ Audio.prototype.pause = function() {
 	_audio.handle(_audio.PAUSE,this.assetname,this.loop,this.id);
 }
 
+// C2 listens to "ended"
+Audio.prototype.addEventListener = function() {}
+
+Audio.prototype.readyState = 5;
+
 // src getter - setter?
 
 
@@ -96,6 +108,9 @@ window.setTimeout = function(callback, millisec) {
 	this._animationFrameCallback = callback;
 }
 
+// signal touchscreen device
+window.ontouchstart = function() {}
+
 window.navigator = {};
 
 window.navigator.appName = "Netscape";
@@ -103,29 +118,125 @@ window.navigator.appCodeName = "Netscape";
 window.navigator.appVersion = "5.0";
 window.navigator.product = "Gecko";
 window.navigator.platform = "Android";
-window.navigator.userAgent = "GlesJS (Android)";
+window.navigator.userAgent = "GlesJS";
 window.navigator.language = "en-US";
 window.navigator.javaEnabled = false;
 window.navigator.cookieEnabled = false;
+window.navigator.isGlesJS = true;
+
+window.navigator.paymentSystem = _paymentSystem;
+
+window.location = {};
+window.location.protocol = "http://";
+
+
+window.c2ejecta = true;
+
+/* interface Gamepad {
+    readonly    attribute DOMString           id;
+    readonly    attribute long                index;
+    readonly    attribute boolean             connected;
+    readonly    attribute DOMHighResTimeStamp timestamp;
+    readonly    attribute DOMString           mapping;
+    readonly    attribute double[]            axes;
+    readonly    attribute GamepadButton[]     buttons;
+}; */
+
+function GamepadButton() {
+	this.pressed = 0;
+	this.value = 0;
+}
+
+function Gamepad(player) {
+	this.id = "player "+player;
+	this.index = player;
+	this.connected=false;
+	this.timestamp = 0; // not implemented
+	this.mapping = "standard";
+	this.axes = [0,0,0,0];
+	this.buttons = [];
+	for (var i=0; i<_utils.NR_BUTTONS; i++) {
+		this.buttons.push(new GamepadButton());
+	}
+}
+
+window.navigator.getGamepads = function() {
+	var ret = [];
+	for (var i=0; i<_utils.NR_PLAYERS; i++) {
+		if (_utils.gamepads[i].connected) ret.push(_utils.gamepads[i]);
+	}
+	return ret;
+}
+
 
 window.WebGLRenderingContext = _gl;
 
 
-window.XMLHttpRequest = function() { }
+// hacks for C2
+
+_gl.getParameter = function(key) {
+	if (key == _gl.ALIASED_POINT_SIZE_RANGE) {
+		return [1,1];
+	} else if (key == _gl.MAX_TEXTURE_SIZE) {
+		return 2048;
+	}
+}
+
+_gl.isContextLost = function() { return false; }
+
+
+window.XMLHttpRequest = function() {
+	this.readyState = 0; // unsent
+	this._mimetype = "text/json";
+}
 
 window.XMLHttpRequest.prototype.open = function(type,url,async) {
 	this._url = url;
+	this.readyState = 1; // opened
 }
 
 window.XMLHttpRequest.prototype.send = function(post) {
 	this.responseText = _utils.loadStringAsset(this._url);
+	if (this._mimetype=="application/xml"
+	||  this._mimetype=="text/xml") {
+		this._elementsByID = {};
+		this._elementsByTagName = {};
+		this.responseXML = HTMLParser.htmlToDomTree(this.responseText,
+			this._elementsByID, this._elementsByTagName);
+		// XXX only defined for root node
+		this.responseXML._elementsByTagName = this._elementsByTagName;
+	}
+	this.readyState = 4; // done
+	this.status = 200; // http status code (currently always success)
 	if (this.onload) {
 		this.onload();
 	}
+	if (this.onreadystatechange) {
+		this.onreadystatechange();
+	}
 }
 
+window.XMLHttpRequest.prototype.overrideMimeType = function(type) {
+	this._mimetype = type;
+}
 
 function _GLDrawFrame() {
+	_utils.getGamepadValues(_utils.gamepadvalues);
+	// copy raw values into gamepad structures
+	for (var p=0; p<_utils.NR_PLAYERS; p++) {
+		var gamepad = _utils.gamepads[p];
+		gamepad.connected = _utils.gamepadvalues[p*_utils.PLAYERDATASIZE] != 0;
+		if (!gamepad.connected) continue;
+		for (var i=0; i<_utils.NR_BUTTONS; i++) {
+			gamepad.buttons[i].value =
+				_utils.gamepadvalues[p*_utils.PLAYERDATASIZE + 1 + i];
+			gamepad.buttons[i].pressed = gamepad.buttons[i].value;
+		}
+		for (var i=0; i<4; i++) {
+			gamepad.axes[i] = 
+				_utils.gamepadvalues[p*_utils.PLAYERDATASIZE + 1+_utils.NR_BUTTONS+i];
+		}
+	}
 	if (window._animationFrameCallback) {
 		window._animationFrameCallback();
 	}
@@ -150,8 +261,14 @@ function _node(nodeName,nodeType) {
 	this.prevSibling = null;
 	this.id = null;
 	this._attributes = {}; // String -> String
+	this._elementsByTagName = {};
 	//attributes not implemented
 }
+
+_node.prototype.getElementsByTagName = function(tagname) {
+	return this._elementsByTagName[tagname.toUpperCase()];
+}
+
 
 _node.prototype.getAttribute = function(name) {
 	return this._attributes[name];
@@ -249,9 +366,9 @@ HTMLParser.makeMap = function (str) {
 
 
 // Regular Expressions for parsing tags and attributes
-HTMLParser.startTag = /^<([-A-Za-z0-9_]+)((?:\s+[a-zA-Z_:][-a-zA-Z0-9_:.]+(?:\s*=\s*(?:(?:"[^"]*")|(?:'[^']*')|[^>\s]+))?)*)\s*(\/?)>/;
+HTMLParser.startTag = /^<([-A-Za-z0-9_]+)((?:\s+[a-zA-Z_:][-a-zA-Z0-9_:.]*(?:\s*=\s*(?:(?:"[^"]*")|(?:'[^']*')|[^>\s]+))?)*)\s*(\/?)>/;
 HTMLParser.endTag = /^<\/([-A-Za-z0-9_]+)[^>]*>/;
-	HTMLParser.attr = /([a-zA-Z_:][-a-zA-Z0-9_:.]+)(?:\s*=\s*(?:(?:"((?:\\.|[^"])*)")|(?:'((?:\\.|[^'])*)')|([^>\s]+)))?/g;
+	HTMLParser.attr = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:(?:"((?:\\.|[^"])*)")|(?:'((?:\\.|[^'])*)')|([^>\s]+)))?/g;
 
 // Empty Elements - HTML 5
 HTMLParser.empty = HTMLParser.makeMap("area,base,basefont,br,col,frame,hr,img,input,isindex,link,meta,param,embed");
@@ -418,7 +535,11 @@ HTMLParser.parse = function (html, handler) {
 	}
 };
 
-HTMLParser.htmlToDomTree = function (html, elemMap) {
+// html: html or xml string to be parsed
+// elemMap: map of elem IDs -> _nodes to use for getElementByID
+// tagMap (optional): map of tagnames -> array of _nodes to use for
+//     getElementsByTagName.
+HTMLParser.htmlToDomTree = function (html, elemMap, tagMap) {
 	var root = null;
 	var stack = [];
 
@@ -426,6 +547,10 @@ HTMLParser.htmlToDomTree = function (html, elemMap) {
 		start: function (tag, attrs, unary) {
 			tag = tag.toUpperCase();
 			var node = new _node(tag,1);
+			if (tagMap) {
+				if (!tagMap[tag]) tagMap[tag] = [];
+				tagMap[tag].push(node);
+			}
 			stack.push(node);
 			// first node encountered is root
 			if (root==null) root=node;
@@ -505,6 +630,7 @@ document.createElement = function(nodeName) {
 	return new _node(nodeName,1);
 }
 
+document.ready = function() {};
 
 
 // _canvas is the game canvas
@@ -522,14 +648,20 @@ _canvas._mousesens = 2.0;
 _canvas._mousedown = false;
 _canvas._prevmousex = 0;
 _canvas._prevmousey = 0;
-_canvas._virtmousex = 100;
-_canvas._virtmousey = 100;
+_canvas._virtmousex = 10;
+_canvas._virtmousey = 10;
 /// XXX todo support multiple callbacks
 _canvas._mouseMoveCallbacks = [];
 _canvas._mouseUpCallbacks = [];
 _canvas._mouseDownCallbacks = [];
 _canvas._mouseOutCallbacks = [];
+
+_canvas._touchStartCallbacks = [];
+_canvas._touchEndCallbacks = [];
+_canvas._touchMoveCallbacks = [];
+
 _canvas._onLoadCallbacks = [];
+
 
 _canvas.addEventListener = function(eventtype,func,bool) {
 	eventtype = eventtype.toLowerCase();
@@ -545,6 +677,15 @@ _canvas.addEventListener = function(eventtype,func,bool) {
 	} else if (eventtype=='mouseout') {
 		this._mouseOutCallback = func;
 		console.log("Added mouseout handler");
+	} else if (eventtype=='touchstart') {
+		this._touchStartCallback = func;
+		console.log("Added touchstart handler");
+	} else if (eventtype=='touchend') {
+		this._touchEndCallback = func;
+		console.log("Added touchend handler");
+	} else if (eventtype=='touchmove') {
+		this._touchMoveCallback = func;
+		console.log("Added touchmove handler");
 	} else if (eventtype=='domcontentloaded') {
 		// XXX may overwrite onload already there
 		this._onloadhandler = func;
@@ -586,6 +727,7 @@ _2dcontext.prototype.getImageData = function(x,y,w,h) {
 	return { data: ret };
 }
 
+_2dcontext.prototype.drawImage = function() { }
 
 
 // _gl should have _canvas as attribute
@@ -607,6 +749,31 @@ function _MouseEvent(x,y,dx,dy) {
 
 _MouseEvent.prototype.preventDefault = function() { }
 
+
+function _TouchEvent(touches,changedTouches) {
+	this.touches = touches;
+	this.targetTouches = touches;
+	this.changedTouches = touches;
+	this.altKey = false;
+	this.metaKey = false;
+	this.ctrlKey = false;
+	this.shiftKey = false;
+}
+
+_TouchEvent.prototype.preventDefault = function() { }
+
+function _Touch(id,x,y) {
+	this.identifier = id;
+	this.target = _canvas;
+	this.clientX = x;
+	this.clientY = y;
+	this.pageX = x;
+	this.pageY = y;
+	this.screenX = x;
+	this.screenY = y;
+}
+
+
 function _MouseButtonEvent(button) {
 	this.button = button;
 }
@@ -624,7 +791,27 @@ function _Rectangle(top,left,width,height) {
 
 // callbacks from engine
 
-function _mouseMoveCallback(x,y) {
+function _touchCoordinatesCallback(ptrid,x,y) {
+	//console.log("#####"+ptrid+"("+x+","+y+")");
+	if (ptrid == -1) { // start multitouch coordinates
+		_canvas._touches = [];
+		_canvas._touchesById = [];
+	//} else if (ptrid == -2) { // end multitouch coordinates
+	} else if (ptrid == -3) { // end touch info
+		// trigger touchMove event
+		if (_canvas._touchMoveCallback) {
+			// XXX for now, we mark all coordinates as changed
+			_canvas._touchMoveCallback(new _TouchEvent(
+				_canvas._touches,_canvas._touches));
+		}
+	} else {
+		var touch = new _Touch(ptrid,x,y);
+		_canvas._touches.push(touch);
+		_canvas._touchesById[ptrid] = touch;
+	}
+}
+
+function _mouseMoveCallback(ptrid,x,y) {
 	if (_canvas._mousedown) {
 		// continue movement
 		var dx = x - _canvas._prevmousex;
@@ -658,7 +845,9 @@ function _mouseMoveCallback(x,y) {
 	_canvas._prevvirtmousey = _canvas.virtmousey;
 }
 
-function _mouseUpCallback() {
+function _mouseUpCallback(ptrid) {
+	// XXX receives multiple touchends for non primary pointer?
+	//console.log("#####touchend "+ptrid);
 	_canvas._mousedown = false;
 	if (_canvas._mouseUpCallback) {
 		_canvas._mouseUpCallback(_canvas._prevMouseEvent);
@@ -669,12 +858,28 @@ function _mouseUpCallback() {
 		_canvas._mouseOutCallback(_canvas._prevMouseEvent);
 		//_canvas._mouseOutCallback(new _MouseButtonEvent(0));
 	}
+	// touch handling
+	if (_canvas._touchEndCallback) {
+		for (var i=0; i<_canvas._touches.length; i++) {
+			// remove ended touch from list
+			if (_canvas._touches[i].identifier == ptrid) {
+				_canvas._touches.splice(i,1);
+				break;
+			}
+		}
+		_canvas._touchEndCallback(new _TouchEvent(_canvas._touches,
+			_canvas._touchesById[ptrid]));
+	}
 }
 
-function _mouseDownCallback() {
+function _mouseDownCallback(ptrid) {
 	if (_canvas._mouseDownCallback) {
 		_canvas._mouseDownCallback(_canvas._prevMouseEvent);
 		//_canvas._mouseDownCallback(new _MouseButtonEvent(0));
+	}
+	if (_canvas._touchStartCallback) {
+		_canvas._touchStartCallback(new _TouchEvent(_canvas._touches,
+			_canvas._touchesById[ptrid]));
 	}
 }
 
@@ -747,11 +952,22 @@ function _updateScreenSize() {
 	_canvas.style.height = height;
 }
 
+// gamepad info
+
+_utils.NR_PLAYERS=4;
+_utils.NR_BUTTONS=17;
+_utils.NR_AXES=6;
+_utils.PLAYERDATASIZE = 1 + _utils.NR_BUTTONS + _utils.NR_AXES;
+
+_utils.gamepadvalues=new Float32Array(_utils.NR_PLAYERS*_utils.PLAYERDATASIZE);
+_utils.gamepads = [new Gamepad(0),new Gamepad(1),new Gamepad(2),new Gamepad(3)];
+
 // MAIN
 
 _updateScreenSize();
 
 _loadJS(document.documentElement);
 
+document.ready();
 
 "HTML5 loaded";
