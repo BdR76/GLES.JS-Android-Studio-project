@@ -3,6 +3,13 @@
 var CANVAS_WIDTH = window.innerWidth;
 var CANVAS_HEIGHT = window.innerHeight;
 
+var txtdebug;
+var txtfps;
+var txttest;
+var phaserdude;
+var starfield;
+var soundForcefield;
+
 // thanks Felipe http://www.html5gamedevs.com/topic/1828-how-to-calculate-fps-in-plain-javascript/
 var fps = {
 	startTime : 0,
@@ -30,13 +37,16 @@ console.log('preload starts');
     game.load.image('phaserdude', 'img/phaserdude.png');
     game.load.spritesheet('balls', 'img/balls.png', 17, 17);
 	
-}
+	// GLESJS: can't use Phaser audio, instead use audio element
+	//game.load.audio('forcefield', 'snd/forcefield.wav');
+	//soundForcefield = new Audio('forcefield');
+	//soundForcefield = document.getElementById('forcefield');
+	//console.log('preload - soundForcefield='+soundForcefield);
+	//soundForcefield = new Audio('forcefield');
 
-var txtdebug;
-var txtfps;
-var txttest;
-var phaserdude;
-var starfield;
+	// JGAudio taken from TsunamiCruiser
+	JGAudio.load('forcefield', 'snd/forcefield');
+}
 
 
 function create() {
@@ -44,15 +54,17 @@ console.log('create starts game.width='+game.width+' game.height='+game.height);
 
     //  The scrolling starfield background
     starfield = game.add.tileSprite(0, 0, game.width, game.height, 'starfield');
+	
+	//soundForcefield = game.add.audio('forcefield');
 
     // add phaserdude to show touch position
     phaserdude = game.add.sprite(0, 0, 'phaserdude');
-	//for (var i = 0; i < 20; i++) {
-	//	var xpos = game.rnd.integerInRange(0, CANVAS_WIDTH);
-	//	var ypos = game.rnd.integerInRange(0, CANVAS_HEIGHT);
-	//	var idx = game.rnd.integerInRange(0, 5);
-	//	game.add.sprite(xpos, ypos, 'balls', idx);
-	//}
+	for (var i = 0; i < 50; i++) {
+		var xpos = game.rnd.integerInRange(0, CANVAS_WIDTH);
+		var ypos = game.rnd.integerInRange(0, CANVAS_HEIGHT);
+		var idx = game.rnd.integerInRange(0, 5);
+		game.add.sprite(xpos, ypos, 'balls', idx);
+	}
 
     //  fake text for debugging purposes
     txtdebug = createMsdosText (game, 40, 0);
@@ -60,10 +72,35 @@ console.log('create starts game.width='+game.width+' game.height='+game.height);
 	txttest = createMsdosText (game, 30, 8);
 
 
-	var msg = 'Testing GLES.JS wrapper, w*h=' + window.innerWidth +  '*' + window.innerHeight;
+	var msg = 'BLATEST GLES.JS wrapper, wxh=' + window.innerWidth +  '*' + window.innerHeight;
 	doMsdosText(txtdebug, msg);
 	doMsdosText(txtfps, '60fps');
 	doMsdosText(txttest, 'More text goes here.. abc 123');
+	
+	// particle for stars on gamewin panel
+	emitterTouch = game.add.emitter(0, 0, 200); // x=0, y=0, maxParticles=200
+	emitterTouch.makeParticles('balls', [0,1,2,3,4,5]);
+	emitterTouch.setXSpeed(-240, +240);
+	emitterTouch.setYSpeed(-240, +240);
+	emitterTouch.setRotation(0, 0);
+	emitterTouch.setScale(1, 0.1, 1, 0.1, 1600, Phaser.Easing.None);
+	emitterTouch.gravity = 0; // no gravity
+	
+	// set emitter event handler
+	game.input.onDown.add(doGameSwipeOnDown);
+}
+
+function doGameSwipeOnDown(evt) {
+	// start move
+	emitterTouch.x = evt.x;
+	emitterTouch.y = evt.y;
+	
+	emitterTouch.start(true, 500, null, 30); // explode=true, lifespan=500, freq=null, quantity=30
+	
+	console.log('doGameSwipeOnDown - about soundForcefield.play()');
+	//soundForcefield.play();
+
+	//JGAudio.play('forcefield'); // works in browser but crashes in GLESJS "accessed stale local reference" !?
 }
 
 function createMsdosText (game, count, ypos) {
@@ -100,10 +137,20 @@ function update() {
     //player.body.x = game.input.x;
 	
 	// phaserdude at touch position
-	phaserdude.x = game.input.x;
-	phaserdude.y = game.input.y;
-	var msg = 'dude coords='+game.input.x+'x'+game.input.y
+	if (game.input.mouse.button == -1) {
+		phaserdude.x = 0;
+		phaserdude.y = 0;
+	} else {
+		phaserdude.x = game.input.x;
+		phaserdude.y = game.input.y;
+	}
+
+	var msg = 'dude coords='+phaserdude.x+'x'+phaserdude.y;
 	doMsdosText(txttest, msg);
+	//if (_canvas) {
+		//console.log('_canvas._virtmousex = '+_canvas._virtmousex);
+	//}
+
 
 	var str = ''+fps.getFPS()+'fps';
 	doMsdosText(txtfps, str);
