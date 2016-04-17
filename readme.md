@@ -5,8 +5,8 @@ This is an Android Studio project that uses the GLES.JS project
 by Boris van Schooten.
 
 Setting up an Android Studio project with GLES.JS was not very intuitive and
-requires gradle editing and other steps etc. So I wanted to consolidate provide
-a working example to anyone interested in working with GLES.JS.
+requires gradle editing and other steps etc. So I wanted to provide a working
+example to anyone interested in working with GLES.JS.
 
 I've set up the project file through trial and error so if you have any 
 it works, but it might contain incorrect settings or redundant files.
@@ -18,7 +18,7 @@ GLESjs
 ------
 [GLES.JS on github](https://github.com/borisvanschooten/glesjs)
 
-GLES.JS by Boris van Schooten (tmtg.net / boris@13thmonkey.org) is provides
+GLES.JS by Boris van Schooten (tmtg.net / boris@13thmonkey.org) provides
 Android WebGL bindings for the Javascript V8 engine (ARMv7 architecture).
 
 The purpose of GLES.JS is to wrap a HTML5/JavaScript game and compile it into a
@@ -38,8 +38,9 @@ DOM manipulations will probably not benefit, so:
 | Possible benefit  | Probably NO benefit |
 | ----------------- | ------------------- |
 | Phaser            | jQuery              |
-| Pixi              | Angular             |
-| Panda             | React               |
+| pixi.js           | Angular             |
+| Three.js          | React.js            |
+| Panda.js          | Ember.js            |
 | etc.              | etc.                |
 
 Android Studio project
@@ -47,9 +48,12 @@ Android Studio project
 
 How to install this project Android Studio
 
-1. Open Android Studio and select Import Project
-2. select the folder "Android Studio project"
-3. Build app and run
+1. Copy the folder "Android Studio project" to your projects folder
+   (for example to C:\Users\<MyUsername>\AndroidStudioProjects\)
+2. Rename the folder to your project name, for example "MyNewGLESJSGame"
+3. Open Android Studio and select "Open an existing Android Studio project"
+4. select the folder "MyNewGLESJSGame"
+5. Build app and run
 
 
 Difference with browser
