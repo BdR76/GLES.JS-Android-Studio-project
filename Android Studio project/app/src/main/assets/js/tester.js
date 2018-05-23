@@ -31,7 +31,7 @@ var fps = {
 var game = new Phaser.Game(CANVAS_WIDTH, CANVAS_HEIGHT, Phaser.AUTO, 'phaser-example', { preload: preload, create: create, update: update, render: render });
 
 function preload() {
-console.log('preload starts');
+    console.log('preload starts');
     game.load.spritesheet('msdosfont', 'img/msdosfont2.png', 18, 32);
     game.load.image('starfield', 'img/starfield.jpg');
     game.load.image('phaserdude', 'img/phaserdude.png');
@@ -50,7 +50,7 @@ console.log('preload starts');
 
 
 function create() {
-console.log('create starts game.width='+game.width+' game.height='+game.height);
+    console.log('create starts game.width='+game.width+' game.height='+game.height);
 
     //  The scrolling starfield background
     starfield = game.add.tileSprite(0, 0, game.width, game.height, 'starfield');
@@ -100,7 +100,8 @@ function doGameSwipeOnDown(evt) {
 	console.log('doGameSwipeOnDown - about soundForcefield.play()');
 	//soundForcefield.play();
 
-	//JGAudio.play('forcefield'); // works in browser but crashes in GLESJS "accessed stale local reference" !?
+    //Done!
+	JGAudio.play('forcefield'); // works in browser but crashes in GLESJS "accessed stale local reference" !?
 }
 
 function createMsdosText (game, count, ypos) {
